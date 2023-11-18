@@ -82,6 +82,8 @@ class Settings:
     eff_HPcompS1 = 0.75
     eff_HPcompS2 = 0.75
     
+    inj_ratio_g = 0.2
+    inj_ratio_l = 0.2
     # 수렴오차
     tol: float = 1.0e-3
     
@@ -94,3 +96,5 @@ class Outputs:
     cond_UA:float = 0.0
     evap_UA:float = 0.0
     DSH: float = 0.0
+    
+    
