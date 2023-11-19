@@ -712,21 +712,21 @@ if __name__ == '__main__':
     inputs.cond_type = 'phe'
     inputs.evap_type = 'phe'
     inputs.layout = '3eco'
-    inputs.cond_T_pp = 3.0
-    inputs.evap_T_pp = 3.0
+    inputs.cond_T_pp = 5.0
+    inputs.evap_T_pp = 5.0
     
     inputs.T_steam = 103.0 + 273.15
     inputs.m_steam = 1.535
     inputs.T_makeup = 95.0 + 273.15
     inputs.m_makeup = inputs.m_steam
     
+    inputs.mech_eff = 0.9
+    inputs.eff_LPcompS1 = 0.65
+    inputs.eff_LPcompS2 = 0.65
+    inputs.eff_HPcompS1 = 0.65
+    inputs.eff_HPcompS2 = 0.65
     
-    inputs.eff_LPcompS1 = 0.6
-    inputs.eff_LPcompS2 = 0.6
-    inputs.eff_HPcompS1 = 0.6
-    inputs.eff_HPcompS2 = 0.6
-    
-    inputs.inj_ratio_g = 0.05
+    inputs.inj_ratio_g = 0.1
     inputs.inj_ratio_l = 0.0
     
     DSH_ub = 15.0
@@ -738,7 +738,7 @@ if __name__ == '__main__':
     
     fluid_list = ['R1233zd(E)','R1336mzz(Z)','R1224yd(Z)']
     
-    num_position = len(fluid_list)*5
+    num_position = len(fluid_list)*10
     num_time = 20
     
     DSH = np.array([DSH_lb+(DSH_ub-DSH_lb)*np.random.random() for i in range(num_position)])
