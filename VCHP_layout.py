@@ -253,8 +253,8 @@ class VCHP():
                 eco3_h_liq = PropsSI("H","P",eco3_p,"Q",0.0, OutCond_REF.fluidmixture)
                 
                 outputs.eco3_x = (OutCond_REF.h - eco3_h_liq)/(eco3_h_vap - eco3_h_liq)
-                outputs.eco2_x = (eco3_h_liq - eco2_h_liq)/(eco2_h_vap - eco2_h_liq)
-                outputs.eco1_x = (eco2_h_liq - eco1_h_liq)/(eco1_h_vap - eco1_h_liq)
+                outputs.eco2_x = (eco3_h_liq*(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)+eco3_h_vap*outputs.eco3_x*(1-inputs.inj_ratio_g) - eco2_h_liq)/(eco2_h_vap - eco2_h_liq)
+                outputs.eco1_x = (eco2_h_liq*(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)+eco2_h_vap*outputs.eco2_x*(1-inputs.inj_ratio_g) - eco1_h_liq)/(eco1_h_vap - eco1_h_liq)
                                 
                 outputs.Out_LPcompS1 = deepcopy(OutEvap_REF)
                 outputs.Out_LPcompS1.p = eco1_p
@@ -530,33 +530,42 @@ class VCHP():
     def Plot_diagram(self, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs):
         (p_array, h_array, T_array, s_array, p_points, h_points, s_points, T_points) = self.Dome_Draw(InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs)
         fig_ph, ax_ph = PLT.subplots()
-        ax_ph.plot([i/1.0e3 for i in h_array], [i/1.0e5 for i in p_array],'k--')
+        p_scale = 1.0e5
+        p_unit = '[bar]'
+        if inputs.layout == '3eco':
+            from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
+            ax_ph.set_yscale('log')
+            
+        ax_ph.plot([i/1.0e3 for i in h_array], [i/p_scale for i in p_array],'k--')
         ax_ph.set_xlabel('Enthalpy [kJ/kg]',fontsize = 15)
-        ax_ph.set_ylabel('Pressure [bar]',fontsize = 15)
+        ax_ph.set_ylabel('Pressure '+p_unit,fontsize = 15)
         ax_ph.set_title('Pressure-Enthalpy Diagram\nRefrigerant:{}'.format(list(inputs.Y.keys())[0]),fontsize = 18)
-        ax_ph.tick_params(axis = 'x', labelsize = 13)
-        ax_ph.tick_params(axis = 'y', labelsize = 13)
+        ax_ph.yaxis.set_major_formatter(ScalarFormatter())
+        ax_ph.yaxis.set_minor_formatter(FormatStrFormatter('%.1f'))
+        ax_ph.tick_params(axis = 'x', labelsize = 10)
+        ax_ph.tick_params(axis = 'y', labelsize = 10, which = 'major')
+        ax_ph.tick_params(axis = 'y', labelsize = 9, which = 'minor')
         
         fig_ts, ax_ts = PLT.subplots()
         ax_ts.plot([i/1.0e3 for i in s_array], [i-273.15 for i in T_array],'k--')
         ax_ts.set_xlabel('Entropy [kJ/kg-K]',fontsize = 15)
         ax_ts.set_ylabel('Temperature [℃]',fontsize = 15)
         ax_ts.set_title('Temperature-Entropy Diagram\nRefrigerant:{}'.format(list(inputs.Y.keys())[0]),fontsize = 18)
-        ax_ts.tick_params(axis = 'x', labelsize = 13)
-        ax_ts.tick_params(axis = 'y', labelsize = 13)
+        ax_ts.tick_params(axis = 'x', labelsize = 10)
+        ax_ts.tick_params(axis = 'y', labelsize = 10)
         
         if inputs.layout == 'bas':
             ax_ts.plot([i/1.0e3 for i in s_points], [i-273.15 for i in T_points],'ko-')
-            ax_ph.plot([i/1.0e3 for i in h_points], [i/1.0e5 for i in p_points],'ko-')
+            ax_ph.plot([i/1.0e3 for i in h_points], [i/p_scale for i in p_points],'ko-')
         elif inputs.layout == '3eco':
             ax_ts.plot([i/1.0e3 for i in s_points[1]], [i-273.15 for i in T_points[1]], 'ko-')
-            ax_ph.plot([i/1.0e3 for i in h_points[1]], [i/1.0e5 for i in p_points[1]], 'ko-')
+            ax_ph.plot([i/1.0e3 for i in h_points[1]], [i/p_scale for i in p_points[1]], 'ko-')
             ax_ts.plot([i/1.0e3 for i in s_points[2]], [i-273.15 for i in T_points[2]], 'ko-')
-            ax_ph.plot([i/1.0e3 for i in h_points[2]], [i/1.0e5 for i in p_points[2]], 'ko-')
+            ax_ph.plot([i/1.0e3 for i in h_points[2]], [i/p_scale for i in p_points[2]], 'ko-')
             ax_ts.plot([i/1.0e3 for i in s_points[3]], [i-273.15 for i in T_points[3]], 'ko-')
-            ax_ph.plot([i/1.0e3 for i in h_points[3]], [i/1.0e5 for i in p_points[3]], 'ko-')
+            ax_ph.plot([i/1.0e3 for i in h_points[3]], [i/p_scale for i in p_points[3]], 'ko-')
             ax_ts.plot([i/1.0e3 for i in s_points[4]], [i-273.15 for i in T_points[4]], 'ko-')
-            ax_ph.plot([i/1.0e3 for i in h_points[4]], [i/1.0e5 for i in p_points[4]], 'ko-')
+            ax_ph.plot([i/1.0e3 for i in h_points[4]], [i/p_scale for i in p_points[4]], 'ko-')
         fig_ph.savefig('.\Figs\Ph_diagram.png',dpi=300)
         fig_ts.savefig('.\Figs\Ts_diagram.png',dpi=300)
         
@@ -707,8 +716,8 @@ if __name__ == '__main__':
     inputs = Settings()
     inputs.second = 'steam'
         
-    inputs.cond_dp = 0.005
-    inputs.evap_dp = 0.005
+    inputs.cond_dp = 0.01
+    inputs.evap_dp = 0.01
     inputs.cond_type = 'phe'
     inputs.evap_type = 'phe'
     inputs.layout = '3eco'
@@ -729,17 +738,17 @@ if __name__ == '__main__':
     inputs.inj_ratio_g = 0.1
     inputs.inj_ratio_l = 0.0
     
-    DSH_ub = 15.0
-    DSC_ub = 15.0
-    DSH_lb = 0.1
-    DSC_lb = 0.1
+    DSH_ub = 10.0
+    DSC_ub = 10.0
+    DSH_lb = 1.0
+    DSC_lb = 1.0
     f_lb = 0.1
     f_ub = 0.3
     
     fluid_list = ['R1233zd(E)','R1336mzz(Z)','R1224yd(Z)']
     
     num_position = len(fluid_list)*10
-    num_time = 20
+    num_time = 31
     
     DSH = np.array([DSH_lb+(DSH_ub-DSH_lb)*np.random.random() for i in range(num_position)])
     DSC = np.array([DSC_lb+(DSC_ub-DSC_lb)*np.random.random() for i in range(num_position)])
@@ -832,18 +841,20 @@ if __name__ == '__main__':
             xx[i][5] = min(max(0, int(xx[i][5])),len(fluid_list)-1)
         
     fig_max, ax_max = PLT.subplots()
-    ax_max.plot(range(num_time), opt_result_max, 'kD-')
+    ax_max.plot(np.arange(1,num_time), opt_result_max[1:], 'kD-')
     ax_max.set_xlabel('Trial Number', fontsize = 15)
     ax_max.set_ylabel('COP', fontsize = 15)
-    ax_max.set_title('PSO algorithm results')
+    ax_max.set_title('PSO algorithm results')    
+    ax_max.set_xticks(np.arange(1,num_time, 5))
     ax_max.tick_params(axis = 'x', labelsize = 13)
     ax_max.tick_params(axis = 'y', labelsize = 13)
     
     fig_avg, ax_avg = PLT.subplots()
-    ax_avg.plot(range(num_time), opt_result_avg, 'kD-')
+    ax_avg.plot(np.arange(1,num_time), opt_result_avg[1:], 'kD-')
     ax_avg.set_xlabel('Trial Number', fontsize = 15)
     ax_avg.set_ylabel('COP', fontsize = 15)
     ax_avg.set_title('PSO algorithm results')
+    ax_avg.set_xticks(np.arange(1,num_time, 5))
     ax_avg.tick_params(axis = 'x', labelsize = 13)
     ax_avg.tick_params(axis = 'y', labelsize = 13)
     
@@ -881,7 +892,8 @@ if __name__ == '__main__':
     
     HP1000RT = VCHP(InCond, OutCond, InEvap, OutEvap, inputs)
     (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = HP1000RT()
-    HP1000RT.Post_Processing(inputs, outputs)
+
     HP1000RT.Plot_diagram(InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs)
+    HP1000RT.Post_Processing(inputs, outputs)
     
     
