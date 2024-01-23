@@ -85,7 +85,7 @@ class Settings:
     inj_ratio_g = 0.2
     inj_ratio_l = 0.2
     # 수렴오차
-    tol: float = 1.0e-3
+    tol: float = 1.0e-6
     
     
 @dataclass

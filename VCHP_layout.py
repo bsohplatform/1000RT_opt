@@ -243,18 +243,24 @@ class VCHP():
                 eco1_p = InEvap_REF.p*(OutCond_REF.p/InEvap_REF.p)**self.eco1_frac
                 eco1_h_vap = PropsSI("H","P",eco1_p,"Q",1.0, OutCond_REF.fluidmixture)
                 eco1_h_liq = PropsSI("H","P",eco1_p,"Q",0.0, OutCond_REF.fluidmixture)
+                eco1_s_vap = PropsSI("S","P",eco1_p,"Q",1.0, OutCond_REF.fluidmixture)
+                eco1_s_liq = PropsSI("S","P",eco1_p,"Q",0.0, OutCond_REF.fluidmixture)
                 
                 eco2_p = eco1_p*(OutCond_REF.p/InEvap_REF.p)**self.eco2_frac
                 eco2_h_vap = PropsSI("H","P",eco2_p,"Q",1.0, OutCond_REF.fluidmixture)
                 eco2_h_liq = PropsSI("H","P",eco2_p,"Q",0.0, OutCond_REF.fluidmixture)
+                eco2_s_vap = PropsSI("S","P",eco2_p,"Q",1.0, OutCond_REF.fluidmixture)
+                eco2_s_liq = PropsSI("S","P",eco2_p,"Q",0.0, OutCond_REF.fluidmixture)
                 
                 eco3_p = eco2_p*(OutCond_REF.p/InEvap_REF.p)**self.eco3_frac    
                 eco3_h_vap = PropsSI("H","P",eco3_p,"Q",1.0, OutCond_REF.fluidmixture)
                 eco3_h_liq = PropsSI("H","P",eco3_p,"Q",0.0, OutCond_REF.fluidmixture)
+                eco3_s_vap = PropsSI("S","P",eco3_p,"Q",1.0, OutCond_REF.fluidmixture)
+                eco3_s_liq = PropsSI("S","P",eco3_p,"Q",0.0, OutCond_REF.fluidmixture)
                 
                 outputs.eco3_x = (OutCond_REF.h - eco3_h_liq)/(eco3_h_vap - eco3_h_liq)
-                outputs.eco2_x = (eco3_h_liq*(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)+eco3_h_vap*outputs.eco3_x*(1-inputs.inj_ratio_g) - eco2_h_liq)/(eco2_h_vap - eco2_h_liq)
-                outputs.eco1_x = (eco2_h_liq*(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)+eco2_h_vap*outputs.eco2_x*(1-inputs.inj_ratio_g) - eco1_h_liq)/(eco1_h_vap - eco1_h_liq)
+                outputs.eco2_x = ((eco3_h_liq*(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)+eco3_h_vap*outputs.eco3_x*(1-inputs.inj_ratio_g))/((1-outputs.eco3_x)*(1-inputs.inj_ratio_l)+outputs.eco3_x*(1-inputs.inj_ratio_g)) - eco2_h_liq)/(eco2_h_vap - eco2_h_liq)
+                outputs.eco1_x = ((eco2_h_liq*(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)+eco2_h_vap*outputs.eco2_x*(1-inputs.inj_ratio_g))/((1-outputs.eco2_x)*(1-inputs.inj_ratio_l)+outputs.eco2_x*(1-inputs.inj_ratio_g)) - eco1_h_liq)/(eco1_h_vap - eco1_h_liq)
                                 
                 outputs.Out_LPcompS1 = deepcopy(OutEvap_REF)
                 outputs.Out_LPcompS1.p = eco1_p
@@ -266,35 +272,38 @@ class VCHP():
                 outputs.In_LPcompS2 = deepcopy(outputs.Out_LPcompS1)
                 outputs.In_LPcompS2.h = outputs.Out_LPcompS1.h*(outputs.eco1_x*(1-inputs.inj_ratio_g)+(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))+eco1_h_vap*outputs.eco1_x*inputs.inj_ratio_g+eco1_h_liq*(1-outputs.eco1_x)*inputs.inj_ratio_l
                 outputs.In_LPcompS2.T = PropsSI("T","H",outputs.In_LPcompS2.h,"P",outputs.In_LPcompS2.p,outputs.In_LPcompS2.fluidmixture)
-                outputs.In_LPcompS2.s = PropsSI("S","T",outputs.In_LPcompS2.T,"P",outputs.In_LPcompS2.p,outputs.In_LPcompS2.fluidmixture)
+                outputs.In_LPcompS2.s = outputs.Out_LPcompS1.s*(outputs.eco1_x*(1-inputs.inj_ratio_g)+(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))+eco1_s_vap*outputs.eco1_x*inputs.inj_ratio_g+eco1_s_liq*(1-outputs.eco1_x)*inputs.inj_ratio_l
+                #outputs.In_LPcompS2.s = PropsSI("S","T",outputs.In_LPcompS2.T,"P",outputs.In_LPcompS2.p,outputs.In_LPcompS2.fluidmixture)
                 
                 outputs.Out_LPcompS2 = deepcopy(outputs.In_LPcompS2)
                 outputs.Out_LPcompS2.p = eco2_p
                 LPcompS2 = CP.Compander_module(outputs.In_LPcompS2, outputs.Out_LPcompS2)
-                (dummy_dsh, dummy_a) = LPcompS2.COMP(eff_isen = inputs.eff_LPcompS2, eff_mech = inputs.mech_eff, DSH = 0.0)
+                (inputs.DSH, cond_a) = LPcompS2.COMP(eff_isen = inputs.eff_LPcompS2, eff_mech = inputs.mech_eff, DSH = inputs.DSH)
                 outputs.Out_LPcompS2 = LPcompS2.primary_out
                                     
                 outputs.In_HPcompS1 = deepcopy(outputs.Out_LPcompS2)
                 outputs.In_HPcompS1.h = outputs.Out_LPcompS2.h*(outputs.eco2_x*(1-inputs.inj_ratio_g)+(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)) + eco2_h_vap*outputs.eco2_x*inputs.inj_ratio_g+eco2_h_liq*(1-outputs.eco2_x)*inputs.inj_ratio_l
                 outputs.In_HPcompS1.T = PropsSI("T","H",outputs.In_HPcompS1.h,"P",outputs.In_HPcompS1.p,outputs.In_HPcompS1.fluidmixture)
-                outputs.In_HPcompS1.s = PropsSI("S","T",outputs.In_HPcompS1.T,"P",outputs.In_HPcompS1.p,outputs.In_HPcompS1.fluidmixture)
+                outputs.In_HPcompS1.s = outputs.Out_LPcompS2.s*(outputs.eco2_x*(1-inputs.inj_ratio_g)+(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)) + eco2_s_vap*outputs.eco2_x*inputs.inj_ratio_g+eco2_s_liq*(1-outputs.eco2_x)*inputs.inj_ratio_l
+                #outputs.In_HPcompS1.s = PropsSI("S","T",outputs.In_HPcompS1.T,"P",outputs.In_HPcompS1.p,outputs.In_HPcompS1.fluidmixture)
                 
                 outputs.Out_HPcompS1 = deepcopy(outputs.In_HPcompS1)
                 outputs.Out_HPcompS1.p = eco3_p
                 HPcompS1 = CP.Compander_module(outputs.In_HPcompS1, outputs.Out_HPcompS1)
-                (dummy_dsh, dummy_a) = HPcompS1.COMP(eff_isen = inputs.eff_HPcompS1, eff_mech = inputs.mech_eff, DSH = 0.0)
+                (inputs.DSH, cond_a) = HPcompS1.COMP(eff_isen = inputs.eff_HPcompS1, eff_mech = inputs.mech_eff, DSH = inputs.DSH)
                 outputs.Out_HPcompS1 = HPcompS1.primary_out
                 
                 outputs.In_HPcompS2 = deepcopy(outputs.Out_HPcompS1)
                 outputs.In_HPcompS2.h = outputs.Out_HPcompS1.h*(outputs.eco3_x*(1-inputs.inj_ratio_g)+(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)) + eco3_h_vap*outputs.eco3_x*inputs.inj_ratio_g+eco3_h_liq*(1-outputs.eco3_x)*inputs.inj_ratio_l
                 outputs.In_HPcompS2.T = PropsSI("T","H",outputs.In_HPcompS2.h,"P",outputs.In_HPcompS2.p, outputs.In_HPcompS2.fluidmixture)
-                outputs.In_HPcompS2.s = PropsSI("S","T",outputs.In_HPcompS2.T,"P",outputs.In_HPcompS2.p, outputs.In_HPcompS2.fluidmixture)
+                outputs.In_HPcompS2.s = outputs.Out_HPcompS1.s*(outputs.eco3_x*(1-inputs.inj_ratio_g)+(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)) + eco3_s_vap*outputs.eco3_x*inputs.inj_ratio_g+eco3_s_liq*(1-outputs.eco3_x)*inputs.inj_ratio_l
+                #outputs.In_HPcompS2.s = PropsSI("S","T",outputs.In_HPcompS2.T,"P",outputs.In_HPcompS2.p, outputs.In_HPcompS2.fluidmixture)
                 
                 HPcompS2 = CP.Compander_module(outputs.In_HPcompS2, InCond_REF)
-                (dummy_dsh, dummy_a) = HPcompS2.COMP(eff_isen = inputs.eff_HPcompS2, eff_mech = inputs.mech_eff, DSH = 0.0)
+                (inputs.DSH, cond_a) = HPcompS2.COMP(eff_isen = inputs.eff_HPcompS2, eff_mech = inputs.mech_eff, DSH = inputs.DSH)
                 InCond_REF = HPcompS2.primary_out
-                
-                InEvap_REF.h = eco1_h_vap*outputs.eco1_x*(1-inputs.inj_ratio_g)+eco1_h_liq*(1-outputs.eco1_x)*(1-inputs.inj_ratio_l)
+                                
+                InEvap_REF.h = (eco1_h_vap*outputs.eco1_x*(1-inputs.inj_ratio_g)+eco1_h_liq*(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))/(outputs.eco1_x*(1-inputs.inj_ratio_g)+(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))
                 InEvap_REF.T = PropsSI("T","H",InEvap_REF.h,"P",InEvap_REF.p,InEvap_REF.fluidmixture)
                 
                 
@@ -319,7 +328,7 @@ class VCHP():
                     outputs.W_LPcompS1 = LPcompS1.Pspecific*outputs.Out_LPcompS1.m
                     outputs.W_LPcompS2 = LPcompS2.Pspecific*outputs.Out_LPcompS2.m
                     outputs.W_HPcompS1 = HPcompS1.Pspecific*outputs.Out_HPcompS1.m
-                    outputs.W_HPcompS2 = HPcompS1.Pspecific*InCond_REF.m
+                    outputs.W_HPcompS2 = HPcompS2.Pspecific*InCond_REF.m
                     
                 InEvap_REF.q = -InEvap.q
                 OutEvap_REF.q = -OutEvap.q
@@ -381,7 +390,7 @@ class VCHP():
                     outputs.W_LPcompS1 = LPcompS1.Pspecific*outputs.Out_LPcompS1.m
                     outputs.W_LPcompS2 = LPcompS2.Pspecific*outputs.Out_LPcompS2.m
                     outputs.W_HPcompS1 = HPcompS1.Pspecific*outputs.Out_HPcompS1.m
-                    outputs.W_HPcompS2 = HPcompS1.Pspecific*InCond_REF.m
+                    outputs.W_HPcompS2 = HPcompS2.Pspecific*InCond_REF.m
                     
                 InCond_REF.q = -InCond.q
                 OutCond_REF.q = -InCond.q
@@ -629,7 +638,7 @@ class VCHP():
             Out_LPcompS1_Tvap = PropsSI("T","P",outputs.Out_LPcompS1.p, "Q", 1.0, outputs.Out_LPcompS1.fluidmixture)
             Out_LPcompS1_hliq = PropsSI("H","P",outputs.Out_LPcompS1.p, "Q", 0.0, outputs.Out_LPcompS1.fluidmixture)
             
-            eco1_h = Out_LPcompS1_hvap*(outputs.eco1_x)*(1-inputs.inj_ratio_g)+Out_LPcompS1_hliq*(1-outputs.eco1_x)*(1-inputs.inj_ratio_l)
+            eco1_h = (Out_LPcompS1_hvap*(outputs.eco1_x)*(1-inputs.inj_ratio_g)+Out_LPcompS1_hliq*(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))/(outputs.eco1_x*(1-inputs.inj_ratio_g)+(1-outputs.eco1_x)*(1-inputs.inj_ratio_l))
             eco1_s_hp = PropsSI("S","H",eco1_h,"P",outputs.Out_LPcompS1.p, outputs.Out_LPcompS1.fluidmixture)
             
             s_points[1] = [OutEvap_REF_svap, OutEvap_REF.s, outputs.Out_LPcompS1.s, Out_LPcompS1_svap, eco1_s_hp, InEvap_REF.s, OutEvap_REF_svap]
@@ -642,7 +651,7 @@ class VCHP():
             Out_LPcompS2_Tvap = PropsSI("T","P",outputs.Out_LPcompS2.p, "Q", 1.0, outputs.Out_LPcompS2.fluidmixture)
             Out_LPcompS2_hliq = PropsSI("H","P",outputs.Out_LPcompS2.p, "Q", 0.0, outputs.Out_LPcompS2.fluidmixture)
             
-            eco2_h = Out_LPcompS2_hvap*(outputs.eco2_x)*(1-inputs.inj_ratio_g)+Out_LPcompS2_hliq*(1-outputs.eco2_x)*(1-inputs.inj_ratio_l)
+            eco2_h = (Out_LPcompS2_hvap*(outputs.eco2_x)*(1-inputs.inj_ratio_g)+Out_LPcompS2_hliq*(1-outputs.eco2_x)*(1-inputs.inj_ratio_l))/(outputs.eco2_x*(1-inputs.inj_ratio_g)+(1-outputs.eco2_x)*(1-inputs.inj_ratio_l))
             eco2_s_hp = PropsSI("S","H",eco2_h,"P",outputs.Out_LPcompS2.p,outputs.Out_LPcompS2.fluidmixture)
             eco2_s_lp = PropsSI("S","H",eco2_h,"P",outputs.In_LPcompS2.p,outputs.In_LPcompS2.fluidmixture)
             
@@ -656,7 +665,7 @@ class VCHP():
             Out_HPcompS1_Tvap = PropsSI("T","P",outputs.Out_HPcompS1.p, "Q", 1.0, outputs.Out_HPcompS1.fluidmixture)
             Out_HPcompS1_hliq = PropsSI("H","P",outputs.Out_HPcompS1.p, "Q", 0.0, outputs.Out_HPcompS1.fluidmixture)
             
-            eco3_h = Out_HPcompS1_hvap*(outputs.eco3_x)*(1-inputs.inj_ratio_g)+Out_HPcompS1_hliq*(1-outputs.eco3_x)*(1-inputs.inj_ratio_l)
+            eco3_h = (Out_HPcompS1_hvap*(outputs.eco3_x)*(1-inputs.inj_ratio_g)+Out_HPcompS1_hliq*(1-outputs.eco3_x)*(1-inputs.inj_ratio_l))/(outputs.eco3_x*(1-inputs.inj_ratio_g)+(1-outputs.eco3_x)*(1-inputs.inj_ratio_l))
             eco3_s_hp = PropsSI("S","H",eco3_h, "P", outputs.Out_HPcompS1.p, outputs.Out_HPcompS1.fluidmixture)
             eco3_s_lp = PropsSI("S","H",eco3_h, "P", outputs.In_HPcompS1.p, outputs.In_HPcompS1.fluidmixture)
             
@@ -716,8 +725,8 @@ if __name__ == '__main__':
     inputs = Settings()
     inputs.second = 'steam'
         
-    inputs.cond_dp = 0.01
-    inputs.evap_dp = 0.01
+    inputs.cond_dp = 0.005
+    inputs.evap_dp = 0.005
     inputs.cond_type = 'phe'
     inputs.evap_type = 'phe'
     inputs.layout = '3eco'
@@ -725,30 +734,31 @@ if __name__ == '__main__':
     inputs.evap_T_pp = 5.0
     
     inputs.T_steam = 103.0 + 273.15
-    inputs.m_steam = 1.535
-    inputs.T_makeup = 95.0 + 273.15
+    inputs.m_steam = 1.371
+    inputs.T_makeup = 30.0 + 273.15
     inputs.m_makeup = inputs.m_steam
     
-    inputs.mech_eff = 0.9
-    inputs.eff_LPcompS1 = 0.65
-    inputs.eff_LPcompS2 = 0.65
-    inputs.eff_HPcompS1 = 0.65
-    inputs.eff_HPcompS2 = 0.65
+    inputs.mech_eff = 0.95
+    inputs.eff_LPcompS1 = 0.7
+    inputs.eff_LPcompS2 = 0.7
+    inputs.eff_HPcompS1 = 0.7
+    inputs.eff_HPcompS2 = 0.7
     
-    inputs.inj_ratio_g = 0.1
+    inputs.inj_ratio_g = 0.5
     inputs.inj_ratio_l = 0.0
     
-    DSH_ub = 10.0
-    DSC_ub = 10.0
+    DSH_ub = 20.0
+    DSC_ub = 20.0
     DSH_lb = 1.0
     DSC_lb = 1.0
     f_lb = 0.1
     f_ub = 0.3
     
-    fluid_list = ['R1233zd(E)','R1336mzz(Z)','R1224yd(Z)']
+    fluid_list = ['R1233zd(E)','R1224yd(Z)']
     
-    num_position = len(fluid_list)*10
-    num_time = 31
+    
+    num_position = len(fluid_list)*20
+    num_time = 20
     
     DSH = np.array([DSH_lb+(DSH_ub-DSH_lb)*np.random.random() for i in range(num_position)])
     DSC = np.array([DSC_lb+(DSC_ub-DSC_lb)*np.random.random() for i in range(num_position)])
@@ -835,9 +845,9 @@ if __name__ == '__main__':
         for i in range(num_position):
             xx[i][0] = min(max(DSH_lb, xx[i][0]),DSH_ub)
             xx[i][1] = min(max(DSC_lb, xx[i][1]),DSC_ub)
-            xx[i][2] = min(max(0.1, xx[i][2]),0.3)
-            xx[i][3] = min(max(0.1, xx[i][3]),0.3)
-            xx[i][4] = min(max(0.1, xx[i][4]),0.3)
+            xx[i][2] = min(max(f_lb, xx[i][2]),f_ub)
+            xx[i][3] = min(max(f_lb, xx[i][3]),f_ub)
+            xx[i][4] = min(max(f_lb, xx[i][4]),f_ub)
             xx[i][5] = min(max(0, int(xx[i][5])),len(fluid_list)-1)
         
     fig_max, ax_max = PLT.subplots()
@@ -845,7 +855,7 @@ if __name__ == '__main__':
     ax_max.set_xlabel('Trial Number', fontsize = 15)
     ax_max.set_ylabel('COP', fontsize = 15)
     ax_max.set_title('PSO algorithm results')    
-    ax_max.set_xticks(np.arange(1,num_time, 5))
+    ax_max.set_xticks(np.arange(0,num_time-1, 5))
     ax_max.tick_params(axis = 'x', labelsize = 13)
     ax_max.tick_params(axis = 'y', labelsize = 13)
     
@@ -854,7 +864,7 @@ if __name__ == '__main__':
     ax_avg.set_xlabel('Trial Number', fontsize = 15)
     ax_avg.set_ylabel('COP', fontsize = 15)
     ax_avg.set_title('PSO algorithm results')
-    ax_avg.set_xticks(np.arange(1,num_time, 5))
+    ax_avg.set_xticks(np.arange(0,num_time-1, 5))
     ax_avg.tick_params(axis = 'x', labelsize = 13)
     ax_avg.tick_params(axis = 'y', labelsize = 13)
     
@@ -892,8 +902,9 @@ if __name__ == '__main__':
     
     HP1000RT = VCHP(InCond, OutCond, InEvap, OutEvap, inputs)
     (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = HP1000RT()
-
-    HP1000RT.Plot_diagram(InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs)
+    
     HP1000RT.Post_Processing(inputs, outputs)
+    HP1000RT.Plot_diagram(InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs)
+    
     
     
