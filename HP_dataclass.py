@@ -82,11 +82,15 @@ class Settings:
     eff_HPcompS1 = 0.75
     eff_HPcompS2 = 0.75
     
-    inj_ratio_g = 0.2
-    inj_ratio_l = 0.2
     # 수렴오차
     tol: float = 1.0e-6
     
+    inj_ratio_g1: float = 0.0
+    inj_ratio_l1: float = 0.0
+    inj_ratio_g2: float = 0.0
+    inj_ratio_l2: float = 0.0
+    inj_ratio_g3: float = 0.0
+    inj_ratio_l3: float = 0.0
     
 @dataclass
 class Outputs:
@@ -95,6 +99,8 @@ class Outputs:
     Wexpand: float = 0.0
     cond_UA:float = 0.0
     evap_UA:float = 0.0
-    DSH: float = 0.0
-    
+    DSH_1: float = 0.0
+    DSH_2: float = 0.0
+    DSH_3: float = 0.0
+    DSH_4: float = 0.0
     
