@@ -47,16 +47,16 @@ outputs = Outputs()
 
 inputs.DSH = 5.0
 inputs.DSC = 1.0
-inputs.inj_ratio_g1 = 0.1
-inputs.inj_ratio_g2 = 0.1
-inputs.inj_ratio_g3 = 0.1
+inputs.inj_ratio_g1 = 1.
+inputs.inj_ratio_g2 = 1.
+inputs.inj_ratio_g3 = 1.
 
 inputs.inj_ratio_l1 = 0.0
 inputs.inj_ratio_l2 = 0.0
 inputs.inj_ratio_l3 = 0.0
 
 inputs.frac_list = [0.2, 0.2, 0.2, 0.2]
-inputs.Y = {'REFPROP::R1224yd(Z)':1.0}
+inputs.Y = {'REFPROP::R1233zd(E)':1.0}
 
 HP1000RT = VCHP(InCond, OutCond, InEvap, OutEvap, inputs)
 (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = HP1000RT()
