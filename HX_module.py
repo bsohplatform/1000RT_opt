@@ -256,20 +256,22 @@ class Heatexchanger_module:
         p_array = [p_primary[round(N_element/6)], p_primary[round(N_element/3)], p_primary[round(N_element/2)], p_primary[round(N_element*2/3)], p_primary[round(N_element*5/6)]]
         return(T_array, p_array)
         
-    def SIMPHX(self, eff_HX:float):
+    def SIMPHX(self, eff_HX, f_sec):
         h_secondary_out_ideal = PropsSI('H','T',self.primary_in.T,'P',self.secondary_out.p,self.secondary_in.fluidmixture)
         h_primary_out_ideal = PropsSI('H','T',self.secondary_in.T,'P',self.primary_out.p,self.primary_in.fluidmixture)
         
-        q_ideal = min(abs(h_primary_out_ideal-self.primary_in.h),abs(h_secondary_out_ideal - self.secondary_in.h))
+        q_ideal = min(abs(h_primary_out_ideal-self.primary_in.h)*f_sec,abs(h_secondary_out_ideal - self.secondary_in.h))
         if self.primary_in.T > self.secondary_in.T:
-            self.primary_in.q = -q_ideal*eff_HX
+            self.primary_out.q = -q_ideal*eff_HX
         else:
-            self.primary_in.q = q_ideal*eff_HX
+            self.primary_out.q = q_ideal*eff_HX
             
-        self.secondary_in.q = -self.primary_in.q
         
-        self.primary_out.h = self.primary_in.h + self.primary_in.q
-        self.secondary_out.h = self.secondary_in.h + self.secondary_in.q
+        self.secondary_out.q = -self.primary_out.q/f_sec
+        
+        
+        self.primary_out.h = self.primary_in.h + self.primary_out.q
+        self.secondary_out.h = self.secondary_in.h + self.secondary_out.q
         
         self.primary_out.T = PropsSI('T','H',self.primary_out.h,'P',self.primary_out.p,self.primary_out.fluidmixture)
         self.secondary_out.T = PropsSI('T','H',self.secondary_out.h,'P',self.secondary_out.p,self.secondary_out.fluidmixture)
