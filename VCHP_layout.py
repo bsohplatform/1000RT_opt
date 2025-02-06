@@ -272,22 +272,27 @@ class VCHP():
             
             ihx_a = 1    
             if inputs.layout == 'ihx':    
-                f_cold = 0.8
+                f_eco = 0.8
             
             while ihx_a:
                 if inputs.layout == 'ihx':
                     outputs.Out_IHX_hot = deepcopy(OutCond_REF)
                     outputs.Out_IHX_hot.p = outputs.Out_IHX_hot.p*(1-inputs.dp_ihx_hot)
                     IHX = HX.Heatexchanger_module(OutCond_REF, outputs.Out_IHX_hot, 0, OutEvap_REF, outputs.Out_IHX_cold, 0)
-                    IHX.SIMPHX(inputs.eff_ihx, f_cold)
+                    IHX.SIMPHX(inputs.eff_ihx, f_eco, inputs.f_ihx)
                     
                     outputs.Out_IHX_hot = IHX.primary_out
                     outputs.Out_IHX_cold = IHX.secondary_out
+                    outputs.In_Eco3 = deepcopy(outputs.Out_IHX_hot)
+                    outputs.In_Eco3.h = outputs.Out_IHX_hot.h*inputs.f_ihx+OutCond_REF.h*(1-inputs.f_ihx)
+                    outputs.In_Eco3.p = outputs.Out_IHX_hot.p
+                    outputs.In_Eco3.T = CP.PropsSI("T","P",outputs.In_Eco3.p,"H",outputs.In_Eco3.h, outputs.In_Eco3.fluidmixture)
+                    
                 else:
                     ihx_a = 0
                 
                 if inputs.layout == 'ihx':
-                    out_pressure = outputs.Out_IHX_hot.p
+                    out_pressure = outputs.In_Eco3.p
                 else:
                     out_pressure = OutCond_REF.p
                     
@@ -304,7 +309,7 @@ class VCHP():
                 eco3_h_liq = PropsSI("H","P",eco3_p,"Q",0.0, OutCond_REF.fluidmixture)
                 
                 if inputs.layout == 'ihx':
-                    outputs.eco3_x = (outputs.Out_IHX_hot.h - eco3_h_liq)/(eco3_h_vap - eco3_h_liq)
+                    outputs.eco3_x = (outputs.In_Eco3.h - eco3_h_liq)/(eco3_h_vap - eco3_h_liq)
                 else:
                     outputs.eco3_x = (OutCond_REF.h - eco3_h_liq)/(eco3_h_vap - eco3_h_liq)
                     
@@ -372,11 +377,11 @@ class VCHP():
                     outputs.Out_HPcompS1.m = outputs.In_HPcompS1.m
                     outputs.In_HPcompS2.m = outputs.Out_HPcompS1.m/(outputs.eco3_x*(1-inputs.inj_ratio_g3)+(1-outputs.eco3_x)*(1-inputs.inj_ratio_l3))
                     InCond_REF.m = outputs.In_HPcompS2.m
-                    OutCond_REF.m = InCond_REF.m
                     
                     if inputs.layout == 'ihx':
                         outputs.Out_IHX_cold.m = OutEvap_REF.m
-                        outputs.Out_IHX_hot.m = OutCond_REF.m
+                        outputs.Out_IHX_hot.m = OutCond_REF.m*inputs.f_ihx
+                        outputs.In_Eco3.m = InCond_REF.m
                         
                     outputs.W_LPcompS1 = LPcompS1.Pspecific*outputs.Out_LPcompS1.m
                     outputs.W_LPcompS2 = LPcompS2.Pspecific*outputs.Out_LPcompS2.m
@@ -426,8 +431,6 @@ class VCHP():
                     InCond_REF.m = InCond.q/(InCond_REF.h - OutCond_REF.h)
                     OutCond_REF.m = InCond_REF.m
                     
-                    
-                    
                     outputs.In_HPcompS2.m = OutCond_REF.m
                     outputs.Out_HPcompS1.m = outputs.In_HPcompS2.m*(outputs.eco3_x*(1-inputs.inj_ratio_g3)+(1-outputs.eco3_x)*(1-inputs.inj_ratio_l3))
                     outputs.In_HPcompS1.m = outputs.Out_HPcompS1.m
@@ -436,7 +439,8 @@ class VCHP():
                     outputs.Out_LPcompS1.m = outputs.In_LPcompS2.m*(outputs.eco1_x*(1-inputs.inj_ratio_g1)+(1-outputs.eco1_x)*(1-inputs.inj_ratio_l1))
                     OutEvap_REF.m = outputs.Out_LPcompS1.m
                     if inputs.layout == 'ihx':
-                        outputs.Out_IHX_hot.m = OutCond_REF.m
+                        outputs.Out_IHX_hot.m = OutCond_REF.m*inputs.f_ihx
+                        outputs.In_Eco3.m = OutCond_REF.m
                         outputs.Out_IHX_cold.m = OutEvap_REF.m
                     InEvap_REF.m = OutEvap_REF.m
                     outputs.W_LPcompS1 = LPcompS1.Pspecific*outputs.Out_LPcompS1.m
@@ -487,12 +491,12 @@ class VCHP():
                         OutEvap.m = InEvap.m
                 
                 if inputs.layout == 'ihx':
-                    f_cold_new = outputs.Out_IHX_cold.m/outputs.Out_IHX_hot.m
-                    err_f = abs(f_cold_new - f_cold)
+                    f_eco_new = outputs.Out_IHX_cold.m/OutCond_REF.m
+                    err_f = abs(f_eco_new - f_eco)
                     if err_f < inputs.tol:
                         ihx_a = 0
                     else:
-                        f_cold = f_cold_new
+                        f_eco = f_eco_new
                 
             cond = HX.Heatexchanger_module(InCond_REF, OutCond_REF, 1, InCond, OutCond, cond_ph)
         
@@ -595,6 +599,7 @@ class VCHP():
         self.eco3_frac = inputs.frac_list[2]
         
         (InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, outputs) = self.Cycle_Solver(InCond, OutCond, InEvap, OutEvap, InCond_REF, OutCond_REF, InEvap_REF, OutEvap_REF, inputs, outputs, no_input, cond_ph, evap_ph)
+        
         if inputs.layout == 'ihx':
             outputs.Q_IHX = (outputs.Out_IHX_cold.h - OutEvap_REF.h)*outputs.Out_IHX_cold.m
         
@@ -734,12 +739,13 @@ class VCHP():
         p_points[3] = [outputs.In_HPcompS1.p, outputs.Out_HPcompS1.p, outputs.Out_HPcompS1.p, outputs.In_HPcompS1.p, outputs.In_HPcompS1.p]
         
         if inputs.layout == 'ihx':
-            ref_s_lp = PropsSI("S","H",outputs.Out_IHX_hot.h,"P",outputs.In_HPcompS2.p,OutCond_REF.fluidmixture)
+            outputs.In_Eco3.s = PropsSI("S","T",outputs.In_Eco3.T,"P",outputs.In_Eco3.p,outputs.In_Eco3.fluidmixture)
+            ref_s_lp = PropsSI("S","H",outputs.In_Eco3.h,"P",outputs.In_HPcompS2.p,OutCond_REF.fluidmixture)
             
-            s_points[4] = [Out_HPcompS1_svap, outputs.In_HPcompS2.s, InCond_REF.s, InCond_REF_svap, OutCond_REF_sliq, OutCond_REF.s, outputs.Out_IHX_hot.s, ref_s_lp, Out_HPcompS1_svap]
-            T_points[4] = [Out_HPcompS1_Tvap, outputs.In_HPcompS2.T, InCond_REF.T, InCond_REF_Tvap, OutCond_REF_Tliq, OutCond_REF.T, outputs.Out_IHX_hot.T, Out_HPcompS1_Tvap, Out_HPcompS1_Tvap]
-            h_points[4] = [outputs.In_HPcompS2.h, InCond_REF.h, OutCond_REF.h, outputs.Out_IHX_hot.h, outputs.Out_IHX_hot.h, outputs.In_HPcompS2.h]
-            p_points[4] = [outputs.In_HPcompS2.p, InCond_REF.p, OutCond_REF.p, outputs.Out_IHX_hot.p, outputs.In_HPcompS2.p, outputs.In_HPcompS2.p]
+            s_points[4] = [Out_HPcompS1_svap, outputs.In_HPcompS2.s, InCond_REF.s, InCond_REF_svap, OutCond_REF_sliq, OutCond_REF.s, outputs.Out_IHX_hot.s, outputs.In_Eco3.s, ref_s_lp, Out_HPcompS1_svap]
+            T_points[4] = [Out_HPcompS1_Tvap, outputs.In_HPcompS2.T, InCond_REF.T, InCond_REF_Tvap, OutCond_REF_Tliq, OutCond_REF.T, outputs.Out_IHX_hot.T, outputs.In_Eco3.T, Out_HPcompS1_Tvap, Out_HPcompS1_Tvap]
+            h_points[4] = [outputs.In_HPcompS2.h, InCond_REF.h, OutCond_REF.h, outputs.Out_IHX_hot.h, outputs.In_Eco3.h, outputs.In_Eco3.h, outputs.In_HPcompS2.h]
+            p_points[4] = [outputs.In_HPcompS2.p, InCond_REF.p, OutCond_REF.p, outputs.Out_IHX_hot.p, outputs.In_Eco3.p, outputs.In_HPcompS2.p, outputs.In_HPcompS2.p]
         else:    
             ref_s_lp = PropsSI("S","H",OutCond_REF.h,"P",outputs.In_HPcompS2.p,OutCond_REF.fluidmixture)
             
@@ -787,6 +793,7 @@ class VCHP():
         print('OutCond_REF (T: %.2f [℃], P: %.2f [bar], mdot: %.3f [kg/s])' %(self.OutCond_REF.T-273.15, self.OutCond_REF.p/1.0e5, self.OutCond_REF.m))
         if inputs.layout == 'ihx':
             print('Out_IHX_hot (T: %.2f [℃], P: %.2f [bar], mdot: %.3f [kg/s])' %(outputs.Out_IHX_hot.T-273.15, outputs.Out_IHX_hot.p/1.0e5, outputs.Out_IHX_hot.m))
+            print('In_Eco3 (T: %.2f [℃], P: %.2f [bar], mdot: %.3f [kg/s])' %(outputs.In_Eco3.T-273.15, outputs.In_Eco3.p/1.0e5, outputs.In_Eco3.m))
         print('')
         if inputs.layout == 'ihx':
             print('LPcompS1 (Inlet DSH: %.2f [℃], Outlet DSH: %.2f [℃])' %(outputs.Out_IHX_cold.T-PropsSI("T","P",outputs.Out_IHX_cold.p,"Q",1.0,outputs.Out_IHX_cold.fluidmixture), outputs.Out_LPcompS1.T-PropsSI("T","P",outputs.Out_LPcompS1.p,"Q",1.0,outputs.Out_LPcompS1.fluidmixture)))    
@@ -795,14 +802,18 @@ class VCHP():
         print('LPcompS2 (Inlet DSH: %.2f [℃], Outlet DSH: %.2f [℃])' %(outputs.In_LPcompS2.T-PropsSI("T","P",outputs.In_LPcompS2.p,"Q",1.0,outputs.In_LPcompS2.fluidmixture),outputs.Out_LPcompS2.T-PropsSI("T","P",outputs.Out_LPcompS2.p,"Q",1.0,outputs.Out_LPcompS2.fluidmixture)))
         print('HPcompS1 (Inlet DSH: %.2f [℃], Outlet DSH: %.2f)' %(outputs.In_HPcompS1.T-PropsSI("T","P",outputs.In_HPcompS1.p,"Q",1.0,outputs.In_HPcompS1.fluidmixture),outputs.Out_HPcompS1.T-PropsSI("T","P",outputs.Out_HPcompS1.p,"Q",1.0,outputs.Out_HPcompS1.fluidmixture)))
         print('HPcompS2 (Inlet DSH: %.2f [℃], Outlet DSH: %.2f)' %(outputs.In_HPcompS2.T-PropsSI("T","P",outputs.In_HPcompS2.p,"Q",1.0,outputs.In_HPcompS2.fluidmixture),self.InCond_REF.T-PropsSI("T","P",self.InCond_REF.p,"Q",1.0,self.InCond_REF.fluidmixture)))
+        if inputs.layout == 'ihx':
+            print('OutCond DSC: %.2f [℃], Out_IHX DSC: %.2f [℃], In_Eco DSC: %.2f [℃]' %(inputs.DSC, PropsSI("T","P",outputs.Out_IHX_hot.p,"Q",0.0,outputs.Out_IHX_hot.fluidmixture)-outputs.Out_IHX_hot.T, PropsSI("T","P",outputs.In_Eco3.p,"Q",0.0,outputs.In_Eco3.fluidmixture)-outputs.In_Eco3.T))
+        else:
+            print('OutCond DSC: %.2f [℃]' %(inputs.DSC))
         print('')
         print('Economizer #1 gas injection ratio: %.2f' %inputs.inj_ratio_g1)
         print('Economizer #2 gas injection ratio: %.2f' %inputs.inj_ratio_g2)
         print('Economizer #3 gas injection ratio: %.2f' %inputs.inj_ratio_g3)
         print('')
-        print('Economizer #1 quality: %.2f' %outputs.eco1_x)
-        print('Economizer #2 quality: %.2f' %outputs.eco2_x)
-        print('Economizer #3 quality: %.2f' %outputs.eco3_x)
+        print('Economizer #1 quality: %.2f, T: %.2f [℃]' %(outputs.eco1_x, PropsSI("T","P",outputs.In_LPcompS2.p,"Q",1.0,outputs.In_LPcompS2.fluidmixture)-273.15))
+        print('Economizer #2 quality: %.2f, T: %.2f [℃]' %(outputs.eco2_x, PropsSI("T","P",outputs.In_HPcompS1.p,"Q",1.0,outputs.In_HPcompS1.fluidmixture)-273.15))
+        print('Economizer #3 quality: %.2f, T: %.2f [℃]' %(outputs.eco3_x, PropsSI("T","P",outputs.In_HPcompS2.p,"Q",1.0,outputs.In_HPcompS2.fluidmixture)-273.15))
             
 if __name__ == '__main__':
     set_config_string(ALTERNATIVE_REFPROP_PATH, 'C:\\Program Files (x86)\\REFPROP\\')

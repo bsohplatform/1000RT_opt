@@ -256,18 +256,20 @@ class Heatexchanger_module:
         p_array = [p_primary[round(N_element/6)], p_primary[round(N_element/3)], p_primary[round(N_element/2)], p_primary[round(N_element*2/3)], p_primary[round(N_element*5/6)]]
         return(T_array, p_array)
         
-    def SIMPHX(self, eff_HX, f_sec):
+    def SIMPHX(self, eff_HX, f_eco, f_ihx):
+        # f_eco: mass flow reduction by economizer / f_ihx: mass flow reduction by ihx split
         h_secondary_out_ideal = PropsSI('H','T',self.primary_in.T,'P',self.secondary_out.p,self.secondary_in.fluidmixture)
         h_primary_out_ideal = PropsSI('H','T',self.secondary_in.T,'P',self.primary_out.p,self.primary_in.fluidmixture)
         
-        q_ideal = min(abs(h_primary_out_ideal-self.primary_in.h)*f_sec,abs(h_secondary_out_ideal - self.secondary_in.h))
+        q_ideal = min(abs(h_primary_out_ideal-self.primary_in.h)*f_eco,abs(h_secondary_out_ideal - self.secondary_in.h)*f_ihx)
         if self.primary_in.T > self.secondary_in.T:
-            self.primary_out.q = -q_ideal*eff_HX
+            self.secondary_out.q = q_ideal*eff_HX
         else:
-            self.primary_out.q = q_ideal*eff_HX
+            self.secondary_out.q = q_ideal*eff_HX
             
         
-        self.secondary_out.q = -self.primary_out.q/f_sec
+        self.primary_out.q = -self.secondary_out.q*f_eco/f_ihx
+        
         
         
         self.primary_out.h = self.primary_in.h + self.primary_out.q
